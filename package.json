@@ -1,0 +1,15 @@
+{
+  "name": "veteran_carclub",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev -w packages/backend",
+    "dev:frontend": "npm run dev -w packages/frontend",
+    "start:backend": "npm run start -w packages/backend",
+    "test:backend": "npm run test -w packages/backend",
+    "db:migrar": "npm run db:migrar -w packages/backend"
+  }
+}
