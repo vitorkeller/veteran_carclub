@@ -1,0 +1,83 @@
+# =========================
+# Dependências (Node.js)
+# =========================
+
+node_modules/
+.pnp/
+.pnp.*
+jspm_packages/
+
+# =========================
+# Variáveis de Ambiente
+# =========================
+
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs e Arquivos de Runtime
+# =========================
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+pids/
+*.pid
+*.seed
+*.pid.lock
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# =========================
+# Build e Outputs (Next.js & Express)
+# =========================
+
+dist/
+build/
+out/
+.next/
+
+# =========================
+# Testes e Cobertura (Coverage)
+# =========================
+
+coverage/
+.nyc_output/
+lib-cov/
+
+# =========================
+# Caches (Linting, TypeScript, Next.js)
+# =========================
+
+*.tsbuildinfo
+next-env.d.ts
+.eslintcache
+.stylelintcache
+
+# =========================
+# Vercel / Deploy
+# =========================
+
+.vercel/
+
+# =========================
+# Uploads (arquivos enviados pelos usuários)
+# =========================
+
+packages/backend/uploads/
+
+# =========================
+# IDEs e Sistema Operacional
+# =========================
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.pem
