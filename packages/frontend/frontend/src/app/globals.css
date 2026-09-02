@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+:root {
+  --cor-branco: #ffffff;
+  --cor-gelo: #f3f8fc;
+  --cor-azul-claro: #cfe6f5;
+  --cor-azul-aco: #3e7cb1;
+  --cor-azul-marinho: #14283d;
+  --cor-cromo: #c7cdd3;
+  --cor-texto: #33455a;
+}
+
+@theme inline {
+  --color-branco: var(--cor-branco);
+  --color-gelo: var(--cor-gelo);
+  --color-azul-claro: var(--cor-azul-claro);
+  --color-azul-aco: var(--cor-azul-aco);
+  --color-azul-marinho: var(--cor-azul-marinho);
+  --color-cromo: var(--cor-cromo);
+  --color-texto: var(--cor-texto);
+
+  --font-display: var(--font-oswald);
+  --font-sans: var(--font-work-sans);
+  --font-mono: var(--font-space-mono);
+}
+
+/*
+  Identidade visual fixa em tom claro (branco + azul-claro), por requisito de
+  marca do clube -- por isso não seguimos prefers-color-scheme aqui. Um tema
+  escuro pode ser adicionado depois como preferência opcional, se o time
+  quiser, sem afetar esse tema padrão.
+*/
+body {
+  background: var(--cor-branco);
+  color: var(--cor-texto);
+  font-family: var(--font-sans);
+}
