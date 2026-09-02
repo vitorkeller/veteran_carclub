@@ -30,7 +30,7 @@ Veja também [`rotas.md`](./docs/rotas.md) para a lista completa de páginas do 
 ### 1. Clonar e instalar as dependências
 
 ```bash
-git clone https://github.com/vitorkeller/veteran_carclub
+git clone https://github.com/vitorkeller/veteran_carclub.git
 cd veteran_carclub
 npm install
 ```
@@ -41,8 +41,16 @@ O projeto é um monorepo com **npm workspaces**: esse único `npm install` na ra
 
 Entre no `psql` (ajuste conforme sua instalação):
 
+**Linux/macOS:**
+
 ```bash
 sudo -u postgres psql
+```
+
+**Windows:**
+
+```powershell
+psql -U postgres
 ```
 
 E crie um usuário e um banco dedicados ao projeto:
@@ -57,8 +65,16 @@ CREATE DATABASE veteran_carclub OWNER veteran_carclub;
 
 ### 3. Configurar as variáveis de ambiente do backend
 
+**Linux/macOS:**
+
 ```bash
 cp packages/backend/.env.example packages/backend/.env
+```
+
+**Windows:**
+
+```powershell
+copy packages\backend\.env.example packages\backend\.env
 ```
 
 Abra `packages/backend/.env` e confira os valores (a tabela completa está [mais abaixo](#variáveis-de-ambiente)). Os padrões já batem com o banco criado no passo 2.
@@ -156,6 +172,10 @@ Monorepo com `packages/frontend` (Next.js, App Router) e `packages/backend` (Exp
 `src/db.js` centraliza a conexão com o PostgreSQL e expõe `query()` e `transacao()`. Regras de negócio críticas são garantidas com `UNIQUE`/`CHECK` no próprio banco (1 evento por dia, capacidade máxima de 600 por evento), não só na aplicação. Limites que evoluem com mais frequência (até 10 fotos por veículo, até 50 por evento) ficam na camada de serviço.
 
 **Frontend**: App Router do Next.js. Páginas públicas (`/`, `/agenda`, `/agenda/[id]`, `/acervo`, `/historias`, `/inscricao`) são Server Components que buscam dados direto da API com `cache: "no-store"` — sempre a versão mais recente, sem o atraso de um cache de fetch do Next.js ficando desatualizado depois que o admin cadastra algo. O painel administrativo (`/admin/**`) é protegido por uma sessão JWT guardada no navegador (`useSyncExternalStore`, sem `useState`+`useEffect`) — veja `rotas.md` para o detalhe de cada rota.
+
+## Backlog
+
+Foi utilizado Trello para armazenar todo o Backlog do projeto, está disponivel em [Trello Veteran CarClub](https://trello.com/b/5Qq7D41C)
 
 ## Estrutura
 
