@@ -6,10 +6,15 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,cyan \"npm:dev:backend\" \"npm:dev:frontend\"",
     "dev:backend": "npm run dev -w packages/backend",
     "dev:frontend": "npm run dev -w packages/frontend",
     "start:backend": "npm run start -w packages/backend",
     "test:backend": "npm run test -w packages/backend",
-    "db:migrar": "npm run db:migrar -w packages/backend"
+    "db:migrar": "npm run db:migrar -w packages/backend",
+    "db:criar-admin": "npm run db:criar-admin -w packages/backend"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
   }
 }

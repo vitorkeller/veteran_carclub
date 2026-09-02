@@ -64,6 +64,12 @@ next-env.d.ts
 .vercel/
 
 # =========================
+# Uploads (arquivos enviados pelos usuários)
+# =========================
+
+packages/backend/uploads/
+
+# =========================
 # IDEs e Sistema Operacional
 # =========================
 
