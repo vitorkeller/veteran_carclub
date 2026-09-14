@@ -29,6 +29,11 @@ export const metadata: Metadata = {
   title: "Veteran Carclub | Encontros de carros antigos em Joinville",
   description:
     "Divulgação de encontros de carros antigos e registro histórico dos veículos e donos que já passaram pelo Veteran Carclub, em Joinville/SC.",
+  icons: {
+    icon: "/logo-favicon.png",
+    shortcut: "/logo-favicon.png",
+    apple: "/logo-favicon.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

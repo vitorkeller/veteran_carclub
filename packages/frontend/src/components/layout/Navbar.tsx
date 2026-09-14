@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 const LINKS = [
   { href: "/agenda", rotulo: "Agenda" },
@@ -18,8 +19,16 @@ export function Navbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link
           href="/"
-          className="font-display text-xl font-semibold uppercase tracking-wide text-azul-marinho"
+          className="flex items-center gap-2 font-display text-xl font-semibold uppercase tracking-wide text-azul-marinho"
         >
+          <Image
+            src="/logo.jpg"
+            alt="Logo Veteran Carclub"
+            width={40}
+            height={40}
+            className="h-9 w-9 shrink-0 rounded-full object-cover"
+            priority
+          />
           Veteran <span className="text-azul-aco">Carclub</span>
         </Link>
 

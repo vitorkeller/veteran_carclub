@@ -37,7 +37,7 @@ export function SocialFeed({ dados }: SocialFeedProps) {
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 text-center">
           <p className="font-mono text-xs font-bold uppercase tracking-[0.3em] text-azul-aco">
-            @veterancarclub
+            @veterancarjoinville
           </p>
           <h2 className="font-display text-3xl font-semibold text-azul-marinho">
             Bastidores no Instagram
