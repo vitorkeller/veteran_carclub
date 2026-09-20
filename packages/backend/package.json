@@ -5,7 +5,7 @@
   "type": "module",
   "description": "API do Veteran Car Club — Node.js + Express + PostgreSQL.",
   "scripts": {
-    "start": "node --env-file=.env src/server.js",
+    "start": "node src/server.js",
     "dev": "node --env-file=.env --watch src/server.js",
     "test": "node --env-file=.env node_modules/vitest/vitest.mjs run",
     "db:migrar": "node --env-file=.env -e \"import('./src/db.js').then(async d=>{await d.migrar();console.log('schema criado');await d.encerrar()})\"",
