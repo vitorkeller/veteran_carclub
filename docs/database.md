@@ -57,7 +57,7 @@ erDiagram
         text modelo
         int ano
         text modificacoes
-        text documento_url "caminho do arquivo em disco local"
+        text documento_url "caminho do arquivo em URL pública no Supabase Storage"
         text imagem_url "legado — ver veiculo_imagens"
         boolean publicado_acervo "curadoria do admin"
         timestamp criado_em
@@ -66,7 +66,7 @@ erDiagram
     VEICULO_IMAGENS {
         int id PK
         int veiculo_id FK
-        text url "caminho em disco local — até 10 por veículo"
+        text url "caminho em URL pública no Supabase Storage — até 10 por veículo"
         int ordem
         timestamp criado_em
     }
@@ -106,7 +106,7 @@ erDiagram
     GALERIA_EVENTOS {
         int id PK
         int evento_id FK
-        text imagem_url "caminho em disco local — até 50 por evento"
+        text imagem_url "caminho em URL pública no Supabase Storage — até 50 por evento"
         text legenda
         timestamp criado_em
     }
