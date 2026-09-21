@@ -1,0 +1,110 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: veteran_carclub
+          POSTGRES_PASSWORD: veteran_carclub
+          POSTGRES_DB: veteran_carclub_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test -w packages/backend
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint -w packages/frontend
+      - run: npm run test -w packages/frontend
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: veteran_carclub
+          POSTGRES_PASSWORD: veteran_carclub
+          POSTGRES_DB: veteran_carclub_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: packages/frontend
+
+      # .env.test já está versionado (é seguro, sem segredo real — ver rodada
+      # anterior) e bate exatamente com o serviço postgres acima. Copiar pra
+      # .env faz os scripts existentes (db:migrar, db:criar-admin) funcionarem
+      # sem precisar de variante nenhuma.
+      - name: Preparar banco de teste
+        run: |
+          cp packages/backend/.env.test packages/backend/.env
+          npm run db:migrar -w packages/backend
+          npm run db:criar-admin -w packages/backend -- "Admin E2E" admin-e2e@teste.com senha-e2e-123
+
+      - name: Subir backend e frontend em segundo plano
+        run: |
+          node --env-file=packages/backend/.env packages/backend/src/server.js &
+          NEXT_PUBLIC_API_URL=http://localhost:3001 npm run dev -w packages/frontend &
+          npx wait-on http://localhost:3001/api/saude http://localhost:3000
+
+      - run: npm run test:e2e -w packages/frontend
+
+  deploy-backend:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, e2e]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Disparar deploy no Render
+        run: curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, e2e]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install -g vercel
+      - name: Deploy na Vercel
+        working-directory: packages/frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
