@@ -1,4 +1,4 @@
-// Conexão com o PostgreSQL local.
+// Conexão com o PostgreSQL — local ou hospedado (Supabase, por exemplo).
 import pg from 'pg';
 
 const { Pool, types } = pg;
@@ -14,7 +14,16 @@ types.setTypeParser(1082, (valor) => valor);
 let pool;
 
 export function conexao() {
-  if (!pool) pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      // Bancos hospedados (Supabase, Neon, etc.) exigem SSL; o Postgres
+      // local de desenvolvimento não. O driver `pg` não ativa SSL sozinho
+      // a partir do `sslmode` na connection string, então detectamos pelo
+      // host.
+      ssl: /supabase\.(co|com)/.test(process.env.DATABASE_URL ?? '') ? { rejectUnauthorized: false } : false,
+    });
+  }
   return pool;
 }
 
