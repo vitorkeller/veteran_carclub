@@ -1,7 +1,3 @@
-// Ponto único de leitura das variáveis de ambiente.
-// Se algo obrigatório faltar, falha rápido e cedo (ao subir o servidor),
-// em vez de dar erro confuso lá na frente quando alguém tentar logar.
-
 function obrigatoria(nome, valorPadraoDev) {
   const valor = process.env[nome] ?? valorPadraoDev;
   if (!valor) {
@@ -13,10 +9,15 @@ function obrigatoria(nome, valorPadraoDev) {
 export const env = {
   porta: process.env.PORT || 3001,
   databaseUrl: obrigatoria('DATABASE_URL'),
-  
   // Em produção, JWT_SECRET deve vir do .env — nunca usar o padrão abaixo.
   jwtSecret: obrigatoria('JWT_SECRET', 'segredo-apenas-para-desenvolvimento-local'),
   jwtExpiracao: process.env.JWT_EXPIRACAO || '7d',
+
+  // Supabase Storage (upload de arquivos — fotos e documentos). Sem
+  // fallback para disco local: essas variáveis são obrigatórias.
+  supabaseUrl: obrigatoria('SUPABASE_URL'),
+  supabaseServiceRoleKey: obrigatoria('SUPABASE_SERVICE_ROLE_KEY'),
+  supabaseBucket: process.env.SUPABASE_STORAGE_BUCKET || 'uploads',
 
   // SMTP para envio de e-mails (confirmação, aprovação/reprovação, código de
   // check-in). Sem essas variáveis, os e-mails só são registrados no console

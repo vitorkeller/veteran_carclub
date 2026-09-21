@@ -131,7 +131,18 @@ usado para pré-marcar os checkboxes de curadoria na tela de edição.
 | ------ | ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST` | `/`     | Pública    | `multipart/form-data`, campo `arquivos` (até 50). Devolve `{ urls: string[] }`. Público de propósito: o cadastro de expositor precisa enviar arquivos antes de existir uma conta/token. |
 
-**Armazenamento (disco local):** cada arquivo é salvo via `services/armazenamento.js` em `packages/backend/uploads/` e servido em `GET /uploads/<arquivo>`. Não há nenhum armazenamento externo, os arquivos ficam só no disco do próprio servidor, então não sobrevivem a um redeploy em plataformas com filesystem efêmero.
+**Armazenamento (Supabase Storage, obrigatório):** cada arquivo é enviado
+via `services/armazenamento.js` direto para o bucket configurado em
+`SUPABASE_STORAGE_BUCKET`, e a resposta já devolve a URL pública definitiva
+do arquivo (não passa mais pelo nosso backend depois de enviado). Sem
+`SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_STORAGE_BUCKET`
+configurados, o servidor nem sobe — não há fallback para disco local.
+
+**Como configurar** (feito uma vez, no painel do Supabase): crie um
+bucket e marque **Public bucket** (em **Storage → New bucket**), depois
+copie a **Project URL** e a chave **`service_role`** (nunca a `anon`) em
+**Project Settings → API**. Preencha os três valores no `.env` do backend —
+passo a passo completo no `README.md`.
 
 ### Contato — `/api/contato`
 

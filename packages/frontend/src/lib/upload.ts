@@ -19,8 +19,7 @@ export async function enviarArquivos(arquivos: File[]): Promise<string[]> {
     throw new ErroUpload(corpo.erro ?? "Não foi possível enviar o(s) arquivo(s).");
   }
 
-  // O backend devolve caminhos relativos ("/uploads/arquivo.jpg"); como o
-  // frontend e o backend rodam em origens diferentes em dev, prefixamos com
-  // a URL da API para o navegador conseguir carregar a imagem.
-  return corpo.urls.map((caminho: string) => `${API_URL}${caminho}`);
+  // O backend agora sempre devolve URLs absolutas do Supabase Storage —
+  // nada para prefixar aqui.
+  return corpo.urls as string[];
 }

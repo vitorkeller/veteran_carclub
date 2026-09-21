@@ -9,7 +9,6 @@ import { uploadsRotas } from './modules/uploads/uploads.rotas.js';
 import { contatoRotas } from './modules/contato/contato.rotas.js';
 import { instagramRotas } from './modules/instagram/instagram.rotas.js';
 import { tratarErros } from './middlewares/tratarErros.js';
-import { PASTA_UPLOADS_LOCAL } from './services/armazenamento.js';
 
 export function criarApp() {
   const app = express();
@@ -18,11 +17,6 @@ export function criarApp() {
 
   // Verificação de saúde: prova que a API sobe.
   app.get('/api/saude', (req, res) => res.json({ ok: true }));
-
-  // Serve os arquivos enviados via /api/uploads (imagens, documentos) em
-  // /uploads/<arquivo> -- estático, sem autenticação (mesmo esquema de um
-  // CDN público de imagens; nada sensível fica nesses arquivos).
-  app.use('/uploads', express.static(PASTA_UPLOADS_LOCAL));
 
   app.use('/api/usuarios', usuariosRotas);
   app.use('/api/eventos', eventosRotas);
