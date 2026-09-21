@@ -11,6 +11,7 @@
     "dev:frontend": "npm run dev -w packages/frontend",
     "start:backend": "npm run start -w packages/backend",
     "test:backend": "npm run test -w packages/backend",
+	"test:frontend": "npm run test -w packages/frontend",
     "db:migrar": "npm run db:migrar -w packages/backend",
     "db:criar-admin": "npm run db:criar-admin -w packages/backend"
   },
