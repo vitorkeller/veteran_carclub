@@ -8,12 +8,12 @@
     "start": "node src/server.js",
     "dev": "node --env-file=.env --watch src/server.js",
     "test": "node --env-file=.env.test node_modules/vitest/vitest.mjs run",
-	"test:watch": "node --env-file=.env.test node_modules/vitest/vitest.mjs",
+    "test:watch": "node --env-file=.env.test node_modules/vitest/vitest.mjs",
     "db:migrar": "node --env-file=.env -e \"import('./src/db.js').then(async d=>{await d.migrar();console.log('schema criado');await d.encerrar()})\"",
     "db:criar-admin": "node --env-file=.env src/scripts/criar-admin.js"
   },
   "dependencies": {
-	"@supabase/supabase-js": "^2.116.0",
+    "@supabase/supabase-js": "^2.116.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "express": "^4.19.2",
