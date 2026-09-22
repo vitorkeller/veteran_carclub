@@ -19,11 +19,10 @@ export function Hero({ proximoEvento }: { proximoEvento?: Evento }) {
             />
 
             {/* CAMADA ESCURA SOBRE A FOTO */}
-            <div className="absolute inset-0 bg-azul-marinho/45" />
+            <div className="absolute inset-0 bg-azul-marinho/70" />
 
             {/* CONTEÚDO DO HERO */}
             <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-10 px-6 pt-10 pb-72 text-center md:pt-14 md:pb-80">
-
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.3em] text-azul-claro">
                     Joinville · SC
                 </p>
