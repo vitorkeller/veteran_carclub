@@ -100,7 +100,6 @@ jobs:
           node-version: 22
       - run: npm install -g vercel
       - name: Deploy na Vercel
-        working-directory: packages/frontend
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
