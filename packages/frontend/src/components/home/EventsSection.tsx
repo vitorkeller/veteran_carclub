@@ -4,7 +4,7 @@ import type { Evento } from "@/types";
 
 export function EventsSection({ eventos }: { eventos: Evento[] }) {
   return (
-    <section id="eventos" className="bg-gelo px-6 py-20">
+    <section id="eventos" className="bg-gelo px-6 pt-40 pb-20">
       <div className="mx-auto max-w-6xl">
         <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div>
