@@ -11,11 +11,15 @@ Projeto da disciplina **Projeto de Aprendizagem Colaborativa Extensionista (PAC 
 
 ## Stack tecnológica
 
-| Camada         | Tecnologia                   |
-| -------------- | ---------------------------- |
-| Frontend       | Next.js (React + TypeScript) |
-| Backend        | Node.js + Express            |
-| Banco de dados | PostgreSQL                   |
+| Camada         | Tecnologia                                                                           |
+| -------------- | ------------------------------------------------------------------------------------ |
+| Frontend       | Next.js (React + TypeScript)                                                         |
+| Backend        | Node.js + Express                                                                    |
+| Banco de dados | PostgreSQL (Supabase)                                                                |
+| Armazenamento  | Supabase Storage                                                                     |
+| Testes         | Vitest + Supertest (backend); Vitest + React Testing Library + Playwright (frontend) |
+| CI/CD          | GitHub Actions                                                                       |
+| Hospedagem     | Vercel (frontend) + Render (backend)                                                 |
 
 Veja também [`rotas.md`](./docs/rotas.md) para a lista completa de páginas do frontend e endpoints da API, e [`database.md`](./docs/database.md) para o diagrama do banco de dados.
 
@@ -23,8 +27,9 @@ Veja também [`rotas.md`](./docs/rotas.md) para a lista completa de páginas do 
 
 ### Pré-requisitos
 
-- **Node.js 20.6 ou superior** (o backend usa `node --env-file`, disponível a partir dessa versão — confira com `node -v`)
-- **PostgreSQL** instalado e rodando localmente (qualquer versão recente, 14+)
+- **Node.js 20.6 ou superior** (confira com `node -v`; o CI roda em Node 22)
+- **Uma conta no [Supabase](https://supabase.com)** (grátis) — obrigatória para o Storage, ver passo 2.
+- **PostgreSQL** instalado e rodando localmente (14+) — necessário mesmo se você usar o banco do Supabase pra desenvolver (Opção A do passo 3), pois os testes automatizados rodam contra um Postgres local dedicado (ver [Testes](#testes))
 - **npm** (vem junto com o Node.js)
 
 ### 1. Clonar e instalar as dependências
@@ -37,7 +42,24 @@ npm install
 
 O projeto é um monorepo com **npm workspaces**: esse único `npm install` na raiz já instala as dependências do frontend (`packages/frontend`) e do backend (`packages/backend`).
 
-### 2. Criar o banco de dados PostgreSQL
+### 2. Criar o projeto no Supabase
+
+O backend usa o Supabase para o **Storage** (upload de fotos e documentos — obrigatório, sem ele o servidor nem sobe) e, opcionalmente, para o **banco de dados** (ver passo 3).
+
+1. Crie uma conta e um projeto em [supabase.com/dashboard](https://supabase.com/dashboard) (região mais próxima, ex. South America).
+2. **Storage:** menu lateral → **Storage** → **New bucket** → crie um bucket (ex. `uploads`) e marque **Public bucket**. Sem isso, as URLs dos arquivos não abrem no navegador.
+3. **Project Settings → API**: copie a **Project URL** e a chave **`service_role`** (formato novo `sb_secret_...`; nunca a `anon`/pública, e nunca commitada).
+4. Guarde os três valores — vão em `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_STORAGE_BUCKET` no passo 4.
+
+### 3. Configurar o banco de dados
+
+**Opção A — Postgres do Supabase (usado em produção):**
+
+Em **Project Settings → Database → Connection string**, aba **Transaction pooler** (porta `6543`), copie a URL e troque `[YOUR-PASSWORD]` pela senha definida na criação do projeto. Vai em `DATABASE_URL` no passo 4.
+
+> Use o pooler (`6543`), não a conexão direta (`5432`) — o backend hospedado abre e fecha conexões com mais frequência do que um Postgres local, e o pooler (PgBouncer) lida melhor com isso.
+
+**Opção B — PostgreSQL local (recomendado pro dia a dia — mais rápido e não arrisca dado do banco compartilhado):**
 
 Entre no `psql` (ajuste conforme sua instalação):
 
@@ -63,7 +85,13 @@ CREATE DATABASE veteran_carclub OWNER veteran_carclub;
 
 > Já tem um PostgreSQL configurado de outro jeito (outro usuário, senha ou porta)? Sem problema — só ajuste a `DATABASE_URL` no passo seguinte.
 
-### 3. Configurar as variáveis de ambiente do backend
+**De qualquer forma, crie também o banco de testes** (usado por `npm test`, isolado do seu banco de desenvolvimento — ver [Testes](#testes)):
+
+```bash
+sudo -u postgres psql -c "CREATE DATABASE veteran_carclub_test OWNER veteran_carclub;"
+```
+
+### 4. Configurar as variáveis de ambiente do backend
 
 **Linux/macOS:**
 
@@ -77,9 +105,9 @@ cp packages/backend/.env.example packages/backend/.env
 copy packages\backend\.env.example packages\backend\.env
 ```
 
-Abra `packages/backend/.env` e confira os valores (a tabela completa está [mais abaixo](#variáveis-de-ambiente)). Os padrões já batem com o banco criado no passo 2.
+Abra `packages/backend/.env` e preencha `DATABASE_URL` (com a URL do passo 3) e `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_STORAGE_BUCKET` (com os valores do passo 2). A tabela completa está [mais abaixo](#variáveis-de-ambiente). Não mexa em `packages/backend/.env.test` — já vem pronto e versionado (ver [Testes](#testes)).
 
-### 4. Criar o schema do banco
+### 5. Criar o schema do banco
 
 ```bash
 npm run db:migrar
@@ -87,7 +115,7 @@ npm run db:migrar
 
 Isso roda as migrações em `packages/backend/src/db.js` e cria todas as tabelas (`usuarios`, `eventos`, `veiculos`, `veiculo_imagens`, `inscricoes`, `historias`, `galeria_eventos`, `contatos`). Deve imprimir `schema criado`.
 
-### 5. Criar o primeiro administrador
+### 6. Criar o primeiro administrador
 
 Por regra de negócio, administradores **não se cadastram pelo site** — eles são pré-cadastrados direto no banco. Use o script dedicado:
 
@@ -97,7 +125,7 @@ npm run db:criar-admin -- "Seu Nome" seu@email.com "uma-senha-forte"
 
 Guarde esse e-mail/senha: é com eles que você vai entrar em `http://localhost:3000/admin/login` depois que o frontend estiver no ar.
 
-### 6. Subir backend e frontend
+### 7. Subir backend e frontend
 
 Com um único comando, os dois sobem juntos (backend na porta `3001`, frontend na porta `3000`):
 
@@ -115,7 +143,7 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-### 7. Conferir que está tudo no ar
+### 8. Conferir que está tudo no ar
 
 - Frontend: [http://localhost:3000](http://localhost:3000)
 - Backend (health check): [http://localhost:3001/api/saude](http://localhost:3001/api/saude) → deve responder `{"ok":true}`
@@ -126,38 +154,53 @@ As páginas públicas (Home, Agenda, Acervo, Histórias) **não usam dados de ex
 Para ver o site com conteúdo, cadastre pelo menos um evento em
 `/admin/eventos` depois de logar como admin.
 
+## Testes
+
+| Comando                                 | O que roda                                                                                                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run test -w packages/backend`      | Testes de integração do backend (Vitest + Supertest), contra o Postgres **local** de teste (`veteran_carclub_test` — nunca o do Supabase)               |
+| `npm run test -w packages/frontend`     | Testes de componente do frontend (Vitest + React Testing Library)                                                                                       |
+| `npm run test:e2e -w packages/frontend` | Testes end-to-end (Playwright) — exige backend **e** frontend já rodando (ver `.github/workflows/ci-cd.yml` pra o passo a passo de subir os dois antes) |
+
+O backend usa `packages/backend/.env.test` (versionado, sem segredo real) em vez do seu `.env` — assim `npm test` nunca corre o risco de rodar `TRUNCATE` no banco de desenvolvimento ou no do Supabase.
+
 ## Variáveis de ambiente
 
-Definidas em `packages/backend/.env` (o `.env.example` já traz os padrões de
-desenvolvimento):
+| Variável                                                         | Descrição                                                                                                                                                                                                       | Onde é usada                                            |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `DATABASE_URL`                                                   | String de conexão do PostgreSQL — local (dev) ou do Supabase (produção, connection string do Transaction pooler, porta `6543`)                                                                                  | Dev local e Render                                      |
+| `PORT`                                                           | Porta em que a API do backend sobe                                                                                                                                                                              | Dev local (Render define a sua própria automaticamente) |
+| `JWT_SECRET`                                                     | Segredo usado para assinar os tokens de login. **Precisa ser um valor diferente e aleatório em produção** (ex.: `openssl rand -hex 32`)                                                                         | Dev local e Render                                      |
+| `JWT_EXPIRACAO`                                                  | Validade do token de login (ex. `7d`)                                                                                                                                                                           | Dev local e Render                                      |
+| `SUPABASE_URL`                                                   | URL do projeto Supabase. **Obrigatória** — sem ela o servidor não sobe                                                                                                                                          | Dev local e Render                                      |
+| `SUPABASE_SERVICE_ROLE_KEY`                                      | Chave de acesso total do Supabase (formato `sb_secret_...`), usada só no backend pra gravar no Storage. **Obrigatória**, nunca exposta ao frontend                                                              | Dev local e Render                                      |
+| `SUPABASE_STORAGE_BUCKET`                                        | Nome do bucket público do Supabase Storage onde ficam as fotos e documentos enviados                                                                                                                            | Dev local e Render                                      |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Credenciais SMTP para envio de e-mails (confirmação, aprovação/reprovação, código de check-in). Opcionais — sem elas, os e-mails só são registrados no console ("modo simulação"). Passo a passo em `rotas.md`. | Dev local e Render (opcional nos dois)                  |
 
-| Variável                                                         | Descrição                                                                                                                                                                                                       | Padrão local                                                                |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `DATABASE_URL`                                                   | String de conexão do PostgreSQL                                                                                                                                                                                 | `postgres://veteran_carclub:veteran_carclub@localhost:5432/veteran_carclub` |
-| `PORT`                                                           | Porta em que a API do backend sobe                                                                                                                                                                              | `3001`                                                                      |
-| `JWT_SECRET`                                                     | Segredo usado para assinar os tokens de login. **Troque em produção** (ex.: `openssl rand -hex 32`)                                                                                                             | `troque-este-valor-em-producao`                                             |
-| `JWT_EXPIRACAO`                                                  | Validade do token de login                                                                                                                                                                                      | `7d`                                                                        |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Credenciais SMTP para envio de e-mails (confirmação, aprovação/reprovação, código de check-in). Opcionais — sem elas, os e-mails só são registrados no console ("modo simulação"). Passo a passo em `rotas.md`. | _(vazio, exceto `SMTP_PORT=587`)_                                           |
+Todas as variáveis do backend acima ficam em `packages/backend/.env` localmente (a partir do `.env.example`) e são cadastradas direto no painel do Render em produção — nenhuma delas é um Secret do GitHub Actions (ver [Deploy e CI/CD](#deploy-e-cicd)).
 
-Arquivos enviados (fotos, documentos) ficam em `packages/backend/uploads/` (`services/armazenamento.js`, criada automaticamente, ignorada pelo git) — ok para o escopo atual do projeto.
+Arquivos enviados (fotos, documentos) vão para o **Supabase Storage** (`services/armazenamento.js`) — não existe mais armazenamento em disco local.
 
-O frontend lê uma única variável opcional, em `packages/frontend/.env.local` (crie o arquivo se precisar mudar o padrão):
+O frontend lê uma única variável, em `packages/frontend/.env.local` (dev) ou nas Environment Variables do projeto na Vercel (produção):
 
-| Variável              | Descrição                           | Padrão                  |
-| --------------------- | ----------------------------------- | ----------------------- |
-| `NEXT_PUBLIC_API_URL` | URL base da API consumida pelo site | `http://localhost:3001` |
+| Variável              | Descrição                                                                                                                                                                 | Onde é usada                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `NEXT_PUBLIC_API_URL` | URL base da API consumida pelo site. Localmente cai para `http://localhost:3001` se não for definida; em produção precisa apontar para a URL pública do backend no Render | Dev local (opcional) e Vercel (obrigatória) |
+
+> `NEXT_PUBLIC_*` é convenção do Next.js: essas variáveis vão embutidas no código que roda no navegador, então nunca coloque segredo nelas (não é o caso aqui, é só uma URL pública).
 
 ## Scripts disponíveis (raiz do monorepo)
 
-| Comando                  | O que faz                                                          |
-| ------------------------ | ------------------------------------------------------------------ |
-| `npm run dev`            | Sobe backend + frontend juntos (um único terminal, logs coloridos) |
-| `npm run dev:backend`    | Sobe só o backend, com reload automático (`node --watch`)          |
-| `npm run dev:frontend`   | Sobe só o frontend (Next.js dev server)                            |
-| `npm run start:backend`  | Sobe o backend em modo produção (sem watch)                        |
-| `npm run test:backend`   | Roda a suíte de testes do backend (Vitest)                         |
-| `npm run db:migrar`      | Cria/atualiza o schema do PostgreSQL                               |
-| `npm run db:criar-admin` | Pré-cadastra um administrador direto no banco                      |
+| Comando                  | O que faz                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| `npm run dev`            | Sobe backend + frontend juntos (um único terminal, logs coloridos)              |
+| `npm run dev:backend`    | Sobe só o backend, com reload automático (`node --watch`)                       |
+| `npm run dev:frontend`   | Sobe só o frontend (Next.js dev server)                                         |
+| `npm run start:backend`  | Sobe o backend em modo produção (sem watch) — o mesmo comando que a Render roda |
+| `npm run test:backend`   | Testes de integração do backend (Vitest + Supertest + Postgres local de teste)  |
+| `npm run test:frontend`  | Testes de componente do frontend (Vitest + React Testing Library)               |
+| `npm run db:migrar`      | Cria/atualiza o schema do PostgreSQL                                            |
+| `npm run db:criar-admin` | Pré-cadastra um administrador direto no banco                                   |
 
 ## Arquitetura resumida
 
@@ -173,9 +216,52 @@ Monorepo com `packages/frontend` (Next.js, App Router) e `packages/backend` (Exp
 
 **Frontend**: App Router do Next.js. Páginas públicas (`/`, `/agenda`, `/agenda/[id]`, `/acervo`, `/historias`, `/inscricao`) são Server Components que buscam dados direto da API com `cache: "no-store"` — sempre a versão mais recente, sem o atraso de um cache de fetch do Next.js ficando desatualizado depois que o admin cadastra algo. O painel administrativo (`/admin/**`) é protegido por uma sessão JWT guardada no navegador (`useSyncExternalStore`, sem `useState`+`useEffect`) — veja `rotas.md` para o detalhe de cada rota.
 
-## Backlog
+## Deploy e CI/CD
 
-Foi utilizado Trello para armazenar todo o Backlog do projeto, está disponivel em [Trello Veteran CarClub](https://trello.com/b/5Qq7D41C)
+Repositório no GitHub, com um único workflow (`.github/workflows/ci-cd.yml`) cuidando de teste e deploy.
+
+### Como o pipeline funciona
+
+**Gatilhos:** todo `push` ou `pull request` para as branches `main` e `dev` disparam o workflow.
+
+**Jobs de teste (rodam sempre, nas duas branches e em PRs):**
+
+1. `test-backend` — sobe um Postgres 16 descartável como serviço do próprio GitHub Actions e roda `npm run test -w packages/backend` contra ele. Não toca no Supabase.
+2. `test-frontend` — roda `npm run lint` e `npm run test -w packages/frontend` (não precisa de banco).
+3. `e2e` — depende dos dois anteriores. Sobe outro Postgres descartável, copia `packages/backend/.env.test` para `.env`, roda as migrações, cria um admin de teste, sobe o backend e o frontend em segundo plano, espera os dois responderem (`wait-on`) e roda `npm run test:e2e -w packages/frontend` (Playwright) contra eles.
+
+**Deploy (só em push direto na `main`, e só se os três jobs acima passarem):**
+
+4. `deploy-backend` — dispara um **Deploy Hook** da Render (uma URL fixa; um `curl -X POST` nela já manda a Render buscar o commit mais novo e reimplantar).
+5. `deploy-frontend` — usa a Vercel CLI (`vercel pull` → `vercel build` → `vercel deploy --prebuilt --prod`) autenticada com um token.
+
+Como o deploy só roda a partir da `main`, a branch `dev` (e qualquer PR) só passa pelos testes — dá pra integrar e revisar código sem nunca disparar um deploy de verdade.
+
+### Vercel (frontend)
+
+- Projeto linkado no **modo monorepo** (`.vercel/repo.json` na raiz do repositório, não um `.vercel/project.json` dentro de `packages/frontend`) — aponta pro `directory: packages/frontend`. Por isso os comandos da Vercel CLI no workflow rodam a partir da raiz do repositório, sem `working-directory`.
+- **Auto-deploy do Git desligado** nas configurações do projeto (Settings → Git) — se estivesse ligado, a Vercel faria deploy sozinha a cada push, sem esperar os testes do GitHub Actions.
+- Variável de ambiente `NEXT_PUBLIC_API_URL` cadastrada direto no painel da Vercel, apontando pra URL pública do backend na Render.
+
+### Render (backend)
+
+- **Root Directory** em branco (raiz do monorepo) — necessário porque o projeto usa npm workspaces; apontar pra `packages/backend` faria a Render não enxergar o resto do repositório e o `npm install` não resolveria as dependências.
+- **Build Command:** `npm install` — **Start Command:** `npm run start:backend`.
+- **Auto-Deploy desligado** (Settings → Auto-Deploy), pelo mesmo motivo da Vercel: quem decide quando implantar é o workflow do GitHub Actions, via Deploy Hook.
+- Todas as variáveis da seção [Variáveis de ambiente](#variáveis-de-ambiente) cadastradas em Environment, direto no painel.
+
+### Secrets do GitHub Actions
+
+Cadastrados em Settings → Secrets and variables → Actions do repositório:
+
+| Secret                   | Pra que serve                                     |
+| ------------------------ | ------------------------------------------------- |
+| `RENDER_DEPLOY_HOOK_URL` | Dispara o redeploy do backend na Render           |
+| `VERCEL_TOKEN`           | Autentica a Vercel CLI no workflow                |
+| `VERCEL_ORG_ID`          | Identifica o time/conta da Vercel dona do projeto |
+| `VERCEL_PROJECT_ID`      | Identifica o projeto da Vercel a implantar        |
+
+Nenhuma credencial do Supabase, `JWT_SECRET` ou SMTP é um Secret do GitHub — essas vivem só nos painéis da Render (backend em produção) e no `.env` local de cada um (dev), o CI usa suas próprias, falsas, só pra rodar os testes (ver [Testes](#testes)).
 
 ## Estrutura
 
@@ -183,6 +269,9 @@ Foi utilizado Trello para armazenar todo o Backlog do projeto, está disponivel 
 veteran_carclub/
 ├── package.json                  # raiz do monorepo (workspaces)
 ├── README.md
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml             # testes + deploy condicional (Render/Vercel)
 ├── docs/
 │   ├── rotas.md                  # documentação de todas as rotas
 │   └── database.md               # diagrama ER (Mermaid) do banco de dados
@@ -190,14 +279,15 @@ veteran_carclub/
     ├── backend/
     │   ├── package.json
     │   ├── .env.example
-    │   ├── uploads/              # arquivos enviados (fotos, documentos) — gitignored
+    │   ├── .env.test             # config de teste (versionado, sem segredo real)
+    │   ├── vitest.config.js
     │   ├── src/
     │   │   ├── server.js         # entrypoint (npm start)
-    │   │   ├── app.js            # monta os routers + serve /uploads estático
+    │   │   ├── app.js            # monta os routers
     │   │   ├── db.js             # conexão + schema do PostgreSQL
-    │   │   ├── config/           # variáveis de ambiente centralizadas
+    │   │   ├── config/           # variáveis de ambiente centralizadas + client do Supabase
     │   │   ├── middlewares/      # autenticação JWT, admin, upload (multer), erros
-    │   │   ├── services/         # armazenamento (disco local), e-mail (SMTP/simulação) + templates
+    │   │   ├── services/         # armazenamento (Supabase Storage), e-mail (SMTP/simulação) + templates
     │   │   ├── utils/            # senha (bcrypt), token (JWT), código de check-in, datas, ErroHttp
     │   │   ├── scripts/
     │   │   │   └── criar-admin.js
@@ -210,12 +300,16 @@ veteran_carclub/
     │   │       ├── contato/      # formulário de contato da Home
     │   │       ├── instagram/    # feed social da Home (dados mockados, sem integração externa)
     │   │       └── uploads/      # upload genérico de arquivos
-    │   └── tests/
+    │   └── tests/                # Vitest + Supertest (integração, banco real de teste)
     └── frontend/
         ├── package.json
         ├── next.config.ts
+        ├── vitest.config.ts
+        ├── playwright.config.ts
         ├── tsconfig.json
         ├── public/
+        ├── tests/                # Vitest + React Testing Library (componentes)
+        ├── e2e/                  # Playwright (ponta a ponta, stack completa)
         └── src/
             ├── app/
             │   ├── layout.tsx           # fontes, metadata
@@ -235,13 +329,13 @@ veteran_carclub/
             │           ├── historias/page.tsx # CRUD + curadoria de veículos em destaque
             │           └── veiculos/page.tsx  # curadoria do acervo
             ├── components/
-            │   ├── layout/        # Navbar, Footer
-            │   ├── home/          # Hero, EventsSection, SocialFeed, ContactSection, ...
-            │   ├── eventos/       # EventoCard (compartilhado Home + Agenda)
-            │   ├── veiculos/      # VeiculoCard, AcervoGaleria, VeiculoModal
-            │   ├── historias/     # HistoriaCard
-            │   ├── inscricao/     # InscricaoForm
-            │   └── ui/            # Placa (assinatura visual), Modal, Carousel
+            │   ├── layout/         # Navbar, Footer
+            │   ├── home/           # Hero, EventsSection, SocialFeed, ContactSection, ...
+            │   ├── eventos/        # EventoCard (compartilhado Home + Agenda)
+            │   ├── veiculos/       # VeiculoCard, AcervoGaleria, VeiculoModal
+            │   ├── historias/      # HistoriaCard
+            │   ├── inscricao/      # InscricaoForm
+            │   └── ui/             # Placa (assinatura visual), Modal, Carousel
             ├── lib/
             │   ├── api.ts          # fetchers públicos (sem cache, sem mock)
             │   ├── admin-auth.ts   # sessão JWT client-side + fetch autenticado
