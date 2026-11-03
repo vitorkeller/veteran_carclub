@@ -202,8 +202,26 @@ export async function migrar() {
   `);
 }
 
-/** Apaga todos os dados (respeitando dependências). Usado pelos testes. */
+/**
+ * Apaga todos os dados (respeitando dependências). Usado pelos testes.
+ *
+ * Trava de segurança: só executa em bancos cujo nome termina em `_test`
+ * (ex.: veteran_carclub_test). Assim, um `npm test` rodado por engano contra o
+ * banco de desenvolvimento (ou o do Supabase) falha em vez de apagar os dados.
+ */
 export async function limparBanco() {
+  let nomeBanco = '';
+  try {
+    nomeBanco = new URL(process.env.DATABASE_URL).pathname.replace(/^\//, '');
+  } catch {
+    // URL inválida: tratada como "não é banco de teste" logo abaixo.
+  }
+  if (!nomeBanco.endsWith('_test')) {
+    throw new Error(
+      `limparBanco() recusado: o banco "${nomeBanco || '?'}" não parece ser de teste (o nome precisa terminar em "_test").`
+    );
+  }
+
   await conexao().query(`
     TRUNCATE TABLE contatos, historia_veiculos_destaque, veiculo_imagens, galeria_eventos, historias, inscricoes, veiculos, eventos, usuarios
     RESTART IDENTITY CASCADE

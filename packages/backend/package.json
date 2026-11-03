@@ -9,6 +9,8 @@
     "dev": "node --env-file=.env --watch src/server.js",
     "test": "node --env-file=.env.test node_modules/vitest/vitest.mjs run",
     "test:watch": "node --env-file=.env.test node_modules/vitest/vitest.mjs",
+	"bench": "node --env-file=.env.test node_modules/vitest/vitest.mjs bench --run",
+	"test:load": "node --env-file=.env.test node_modules/vitest/vitest.mjs run --config vitest.load.config.js",
     "db:migrar": "node --env-file=.env -e \"import('./src/db.js').then(async d=>{await d.migrar();console.log('schema criado');await d.encerrar()})\"",
     "db:criar-admin": "node --env-file=.env src/scripts/criar-admin.js"
   },
