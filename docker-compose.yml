@@ -1,0 +1,184 @@
+# Ambiente de desenvolvimento local do Veteran Carclub.
+#
+#   docker compose up --build          -> banco + backend + frontend
+#   docker compose run --rm backend-test   -> testes do backend (banco isolado)
+#   docker compose --profile e2e ...   -> pilha de testes E2E / performance
+#
+# O passo a passo completo está no README.md.
+
+name: veteran-carclub
+
+# ---------------------------------------------------------------------------
+# Blocos reutilizáveis
+# ---------------------------------------------------------------------------
+x-url-banco-dev: &url-banco-dev postgres://veteran_carclub:veteran_carclub@db:5432/veteran_carclub
+x-url-banco-teste: &url-banco-teste postgres://veteran_carclub:veteran_carclub@db:5432/veteran_carclub_test
+
+x-backend: &backend
+  build:
+    context: .
+    target: backend
+  image: veteran-carclub/backend:dev
+  volumes:
+    # Só o código-fonte é montado (hot reload). node_modules fica na imagem,
+    # então nada do seu host (ex.: binários do Windows) vaza para o container.
+    - ./packages/backend/src:/app/packages/backend/src
+    - ./packages/backend/tests:/app/packages/backend/tests
+
+x-healthcheck-api: &healthcheck-api
+  test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/saude').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+  interval: 5s
+  timeout: 3s
+  retries: 20
+  start_period: 10s
+
+services:
+  # -------------------------------------------------------------------------
+  # Desenvolvimento
+  # -------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: veteran_carclub
+      POSTGRES_PASSWORD: veteran_carclub
+      POSTGRES_DB: veteran_carclub
+    volumes:
+      - db-dados:/var/lib/postgresql/data
+      # Cria o banco veteran_carclub_test na primeira inicialização do volume.
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Só no seu computador (127.0.0.1) e na 5433, para não colidir com um
+      # PostgreSQL que você já tenha instalado na 5432. Útil para DBeaver/psql.
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U veteran_carclub -d veteran_carclub"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    <<: *backend
+    # Segredos (Supabase, JWT, SMTP) vêm do seu packages/backend/.env.
+    env_file: packages/backend/.env
+    environment:
+      # Estes dois SOBRESCREVEM o que estiver no .env: dentro do Docker o banco
+      # é o serviço "db" (não "localhost") e a porta é sempre 3001.
+      DATABASE_URL: *url-banco-dev
+      PORT: "3001"
+    command: ["node", "--watch", "src/server.js"]
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck: *healthcheck-api
+
+  frontend:
+    build:
+      context: .
+      target: frontend
+    image: veteran-carclub/frontend:dev
+    environment:
+      # O NAVEGADOR acessa a API pelo endereço publicado no seu computador...
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      # ...já o SERVIDOR do Next (dentro do container) precisa usar a rede
+      # interna do Docker: lá, "localhost" seria o próprio container do frontend.
+      API_URL_INTERNA: http://backend:3001
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - ./packages/frontend/src:/app/packages/frontend/src
+      - ./packages/frontend/public:/app/packages/frontend/public
+      - ./packages/frontend/tests:/app/packages/frontend/tests
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Testes (executores de uma rodada só: `docker compose run --rm <serviço>`)
+  # -------------------------------------------------------------------------
+  backend-test:
+    <<: *backend
+    profiles: ["test"]
+    # SEM env_file de propósito: as variáveis vêm do .env.test (versionado, com
+    # valores falsos do Supabase) e só o banco é apontado para o container.
+    # Assim o teste nunca vê suas chaves reais nem toca no banco de dev
+    # (os testes dão TRUNCATE nas tabelas).
+    environment:
+      DATABASE_URL: *url-banco-teste
+    command: ["npm", "test"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Pilha isolada para E2E, performance e carga (espelha o job "e2e" do CI).
+  # Usa o banco veteran_carclub_test e uma build de PRODUÇÃO do frontend.
+  # -------------------------------------------------------------------------
+  api-e2e:
+    <<: *backend
+    profiles: ["e2e"]
+    env_file: packages/backend/.env.test
+    environment:
+      DATABASE_URL: *url-banco-teste
+      PORT: "3001"
+    # Cria o admin usado pelo teste E2E (se já existir, o script só avisa) e sobe a API.
+    command:
+      - sh
+      - -c
+      - node src/scripts/criar-admin.js "Admin E2E" admin-e2e@teste.com senha-e2e-123; exec node src/server.js
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck: *healthcheck-api
+
+  web-e2e:
+    build:
+      context: .
+      target: frontend-prod
+      args:
+        # Embutida no bundle em tempo de build. Quem acessa é o navegador do
+        # container "playwright", que enxerga a API pelo nome do serviço.
+        NEXT_PUBLIC_API_URL: http://api-e2e:3001
+    image: veteran-carclub/frontend:e2e
+    profiles: ["e2e"]
+    depends_on:
+      api-e2e:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  playwright:
+    build:
+      context: .
+      target: playwright
+    image: veteran-carclub/playwright:dev
+    profiles: ["e2e"]
+    environment:
+      PLAYWRIGHT_BASE_URL: http://web-e2e:3000
+    shm_size: "1gb"
+    # Padrão: testes E2E. Para performance: `... run --rm playwright npm run test:perf`
+    command: ["npm", "run", "test:e2e"]
+    depends_on:
+      web-e2e:
+        condition: service_healthy
+
+  carga:
+    <<: *backend
+    profiles: ["e2e"]
+    environment:
+      DATABASE_URL: *url-banco-teste
+      API_BASE_URL: http://api-e2e:3001
+    # Microbenchmarks + teste de carga do backend (ver README).
+    command: ["sh", "-c", "npm run bench && npm run test:load"]
+    depends_on:
+      api-e2e:
+        condition: service_healthy
+
+volumes:
+  db-dados:

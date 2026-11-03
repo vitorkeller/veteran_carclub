@@ -1,0 +1,21 @@
+# Contexto de build enxuto e seguro: nada de segredos, dependências do host
+# ou artefatos de build entram na imagem.
+**/node_modules
+**/.next
+**/out
+**/build
+**/coverage
+**/playwright-report
+**/test-results
+**/.vercel
+.git
+.github
+docs
+*.md
+
+# Segredos: NUNCA entram na imagem (as variáveis chegam via compose).
+**/.env
+**/.env.*
+# ...exceto os arquivos versionados e sem segredo real:
+!**/.env.example
+!**/.env.test
