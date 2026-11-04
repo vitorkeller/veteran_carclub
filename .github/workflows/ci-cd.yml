@@ -5,6 +5,7 @@ on:
     branches: [main, dev]
   pull_request:
     branches: [main, dev]
+  workflow_dispatch:
 
 jobs:
   test-backend:
@@ -80,6 +81,54 @@ jobs:
           npx wait-on http://localhost:3001/api/saude http://localhost:3000
 
       - run: npm run test:e2e -w packages/frontend
+
+  performance:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    # Não é gate de deploy: números de performance variam demais num runner
+    # compartilhado. Roda após merge na main (e manualmente, se quiser).
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: veteran_carclub
+          POSTGRES_PASSWORD: veteran_carclub
+          POSTGRES_DB: veteran_carclub_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: packages/frontend
+
+      # NEXT_PUBLIC_API_URL é embutida no bundle em tempo de build.
+      - name: Build do frontend (modo produção)
+        run: npm run build -w packages/frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+
+      - name: Subir backend e frontend em segundo plano
+        run: |
+          node --env-file=packages/backend/.env.test packages/backend/src/server.js &
+          npm run start -w packages/frontend &
+          npx wait-on http://localhost:3001/api/saude http://localhost:3000
+
+      - name: Microbenchmarks do backend (Vitest bench)
+        run: npm run bench -w packages/backend
+
+      - name: Teste de carga do backend (Vitest)
+        run: npm run test:load -w packages/backend
+
+      - name: Testes de performance do frontend (Playwright)
+        run: npm run test:perf -w packages/frontend
+        continue-on-error: true # LCP/TTFB variam num runner compartilhado
 
   deploy-backend:
     runs-on: ubuntu-latest
