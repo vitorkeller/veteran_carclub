@@ -8,7 +8,6 @@ const LINKS = [
   { href: "/agenda", rotulo: "Agenda" },
   { href: "/acervo", rotulo: "Acervo" },
   { href: "/historias", rotulo: "Histórias" },
-  { href: "/#contato", rotulo: "Contato" },
 ];
 
 export function Navbar() {

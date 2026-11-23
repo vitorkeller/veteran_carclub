@@ -11,8 +11,10 @@ name: veteran-carclub
 # ---------------------------------------------------------------------------
 # Blocos reutilizáveis
 # ---------------------------------------------------------------------------
-x-url-banco-dev: &url-banco-dev postgres://veteran_carclub:veteran_carclub@db:5432/veteran_carclub
-x-url-banco-teste: &url-banco-teste postgres://veteran_carclub:veteran_carclub@db:5432/veteran_carclub_test
+# x-url-banco-dev: &url-banco-dev postgres://veteran_carclub:veteran_carclub@db:5432/veteran_carclub
+x-url-banco-dev: &url-banco-dev postgresql://postgres.hzpuknesybcbjjcifgdb:TSOpQB2TefbZqk5S@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+# x-url-banco-teste: &url-banco-teste postgres://veteran_carclub:veteran_carclub@db:5432/veteran_carclub_test
+x-url-banco-teste: &url-banco-teste postgresql://postgres.hzpuknesybcbjjcifgdb:TSOpQB2TefbZqk5S@aws-0-sa-east-1.pooler.supabase.com:6543/postgres_test
 
 x-backend: &backend
   build:
